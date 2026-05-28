@@ -426,7 +426,7 @@ public class Eclipse : MonoBehaviour {
 
 			if(f > Math.PI) f = 2*(float)Math.PI - f;
 
-			if(f > 0.05f) return false;
+			if(f > 0.01f) return false;
 		}
 		return true;
 	}
