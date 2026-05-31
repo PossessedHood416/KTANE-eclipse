@@ -50,6 +50,7 @@ public class Eclipse : MonoBehaviour {
 
 	private float SunDist;
 	private float MoonDist;
+	private float SunVeloFactor;
 	private float MoonVeloFactor;
 
 
@@ -224,15 +225,19 @@ public class Eclipse : MonoBehaviour {
 		MoonAxisA = vects[2];
 		MoonAxisB = vects[3];
 		
-		int concatSN = 0;
-		foreach (int num in Bomb.GetSerialNumberNumbers()){
-			concatSN *= 10;
-			concatSN += num;
-		}
+		int moonvelosqr = Rnd.Range(15,99);
 
-		while(DeafMath.IsSquare(concatSN)) concatSN++;
-		MoonVeloFactor = (float)Math.Pow(concatSN, 0.5f);
+		while(DeafMath.IsSquare(moonvelosqr)) moonvelosqr++;
+		MoonVeloFactor = (float)Math.Pow(moonvelosqr, 0.5f);
+		SunVeloFactor = Rnd.Range(6,15)/8.0f;
 
+		Debug.LogFormat("<The Eclipse #{0}> Body A axis C: {1}", ModuleId, SunAxisA);
+		Debug.LogFormat("<The Eclipse #{0}> Body A axis D: {1}", ModuleId, SunAxisB);
+		Debug.LogFormat("<The Eclipse #{0}> Body B axis C: {1}", ModuleId, MoonAxisA);
+		Debug.LogFormat("<The Eclipse #{0}> Body B axis D: {1}", ModuleId, MoonAxisB);
+		Debug.LogFormat("<The Eclipse #{0}> Body A velocity factor: {1}", ModuleId, SunVeloFactor);
+		Debug.LogFormat("<The Eclipse #{0}> Body B velocity factor: {1}", ModuleId, MoonVeloFactor);
+		
 		Recalc();
 	}
 
@@ -370,7 +375,7 @@ public class Eclipse : MonoBehaviour {
 	void Recalc() {
 		if(Time < 0f) Time = 0f;
 
-		Sun3dPos = (float)Math.Cos(Time)*SunAxisA + (float)Math.Sin(Time)*SunAxisB;
+		Sun3dPos = (float)Math.Cos(Time*SunVeloFactor)*SunAxisA + (float)Math.Sin(Time*SunVeloFactor)*SunAxisB;
 		Moon3dPos = (float)Math.Cos(Time*MoonVeloFactor)*MoonAxisA + (float)Math.Sin(Time*MoonVeloFactor)*MoonAxisB;
 
 		SunDist = Magnitude(Sun3dPos);
@@ -390,14 +395,6 @@ public class Eclipse : MonoBehaviour {
 		if(MoonPhi < 0f) MoonPhi += 2*(float)Math.PI;
 
 		if(Math.Abs(Time) < Math.Pow(3, -8)) Time = 0f;
-
-		Debug.LogFormat("//////////////////////////////////////////");
-		Debug.LogFormat("Time: {0}, Power {1}", Time, Power);
-		Debug.LogFormat("Sun3dPos {0}, SunDist {1}", Sun3dPos, SunDist);
-		Debug.LogFormat("Moon3dPos {0}, MoonDist {1}", Moon3dPos, MoonDist);
-		Debug.LogFormat("SunTheta {0}, SunPhi {1}", SunTheta, SunPhi);
-		Debug.LogFormat("MoonTheta {0}, MoonPhi {1}", MoonTheta, MoonPhi);
-		Debug.LogFormat("ViewTheta {0}, ViewPhi {1}", ViewTheta, ViewPhi);
 
 		if(CheckAns()) Solve();
 	}
