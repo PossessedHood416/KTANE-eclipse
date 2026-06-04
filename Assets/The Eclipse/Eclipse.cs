@@ -31,7 +31,7 @@ public class Eclipse : MonoBehaviour {
 	private bool isAni = false;
 
 	int Power = 0;
-	float Time = 0f;
+	int LargeTime = 0; // seconds * 3^8
 
 	private Vector3 SunAxisA;
 	private Vector3 SunAxisB;
@@ -41,18 +41,17 @@ public class Eclipse : MonoBehaviour {
 	private Vector3 Moon3dPos;
 
 	//radians
-	private float SunTheta;
-	private float SunPhi;
-	private float MoonTheta;
-	private float MoonPhi;
-	private float ViewTheta;
-	private float ViewPhi;
+	private double SunTheta;
+	private double SunPhi;
+	private double MoonTheta;
+	private double MoonPhi;
+	private double ViewTheta;
+	private double ViewPhi;
 
-	private float SunDist;
-	private float MoonDist;
-	private float SunVeloFactor;
-	private float MoonVeloFactor;
-
+	private double SunDist;
+	private double MoonDist;
+	private double SunVeloFactor;
+	private double MoonVeloFactor;
 
 	void Awake () {
 		ModuleId = ModuleIdCounter++;
@@ -80,16 +79,16 @@ public class Eclipse : MonoBehaviour {
 
 		switch (i) {
 			case 0: //ViewTheta +
-			ViewTheta += (float)(Math.Pow(3, Power)*(2*Math.PI)/Math.Pow(3,8));
+			ViewTheta += (Math.Pow(3, Power)*(2*Math.PI)/Math.Pow(3,8));
 			DisplayRadians(ViewTheta);
 			break;
 
 			case 1: //Time +
-			Time += (float)Math.Pow(3, Power);
+			LargeTime += (int)Math.Pow(3, Power + 8);
 			break;
 
 			case 2: //ViewPhi -
-			ViewPhi -= (float)(Math.Pow(3, Power)*(2*Math.PI)/Math.Pow(3,8));
+			ViewPhi -= (Math.Pow(3, Power)*(2*Math.PI)/Math.Pow(3,8));
 			DisplayRadians(ViewPhi);
 			break;
 
@@ -98,16 +97,16 @@ public class Eclipse : MonoBehaviour {
 			break;
 
 			case 4: //ViewTheta -
-			ViewTheta -= (float)(Math.Pow(3, Power)*(2*Math.PI)/Math.Pow(3,8));
+			ViewTheta -= (Math.Pow(3, Power)*(2*Math.PI)/Math.Pow(3,8));
 			DisplayRadians(ViewTheta);
 			break;
 
 			case 5: //Time -
-			Time -= (float)Math.Pow(3, Power);
+			LargeTime -= (int)Math.Pow(3, Power + 8);
 			break;
 
 			case 6: //ViewPhi +
-			ViewPhi += (float)(Math.Pow(3, Power)*(2*Math.PI)/	Math.Pow(3,8));
+			ViewPhi += (Math.Pow(3, Power)*(2*Math.PI)/	Math.Pow(3,8));
 			DisplayRadians(ViewPhi);
 			break;
 
@@ -131,25 +130,25 @@ public class Eclipse : MonoBehaviour {
 		switch (i) {
 			case 0: //SunTheta
 			DisplayRadians(SunTheta);
-			ViewTheta = 0f;
+			ViewTheta = 0d;
 			break;
 
 			case 1: //Time
-			DisplayFloat(Time);
+			DisplayLargeInt(LargeTime);
 			break;
 
 			case 2: //SunPhi
 			DisplayRadians(SunPhi);
-			ViewPhi = 0f;
+			ViewPhi = 0d;
 			break;
 
 			case 3: //MoonDist
-			DisplayFloat(MoonDist);
+			DisplayDouble(MoonDist);
 			break;
 
 			case 4: //MoonTheta
 			DisplayRadians(MoonTheta);
-			ViewTheta = 0f;
+			ViewTheta = 0d;
 			break;
 
 			case 5: //Power
@@ -158,11 +157,11 @@ public class Eclipse : MonoBehaviour {
 
 			case 6: //MoonPhi
 			DisplayRadians(MoonPhi);
-			ViewPhi = 0f;
+			ViewPhi = 0d;
 			break;
 
 			case 7: //SunDist
-			DisplayFloat(SunDist);
+			DisplayDouble(SunDist);
 			break;
 
 			default: break;
@@ -179,12 +178,12 @@ public class Eclipse : MonoBehaviour {
 		
 		if(ModuleSolved) return;
 
-		Time = 0f;
+		LargeTime = 0;
 		Power = 0;
-		ViewTheta = 0;
-		ViewPhi = 0;
+		ViewTheta = 0d;
+		ViewPhi = 0d;
 		Recalc();
-		DisplayFloat(0f);
+		DisplayTernary("0000000000000000");
 	}
 
 	void OnDestroy () {
@@ -209,7 +208,7 @@ public class Eclipse : MonoBehaviour {
 			Vector3 contender = new Vector3(Rnd.Range(-9,10), Rnd.Range(-9,10), Rnd.Range(-9,10));
 
 			//regen if vector too small
-			if(Magnitude(contender) < 2f) continue;
+			if(Magnitude(contender) < 2d) continue;
 			
 			//regen if too close to colinear with previous vects
 			for(int i = 0; i < vects.Count -1; i++){
@@ -228,8 +227,8 @@ public class Eclipse : MonoBehaviour {
 		int moonvelosqr = Rnd.Range(15,99);
 
 		while(DeafMath.IsSquare(moonvelosqr)) moonvelosqr++;
-		MoonVeloFactor = (float)Math.Pow(moonvelosqr, 0.5f);
-		SunVeloFactor = Rnd.Range(6,15)/8.0f;
+		MoonVeloFactor = Math.Pow(moonvelosqr, 0.5f);
+		SunVeloFactor = Rnd.Range(6,15)/8.0d;
 
 		Debug.LogFormat("<The Eclipse #{0}> Body A axis C: {1}", ModuleId, SunAxisA);
 		Debug.LogFormat("<The Eclipse #{0}> Body A axis D: {1}", ModuleId, SunAxisB);
@@ -258,18 +257,23 @@ public class Eclipse : MonoBehaviour {
 
 	//===================Display=========================//
 
-	void DisplayRadians (float radian) {
-		float bendian = radian /(2*(float)Math.PI) * 6561f;
-		DisplayFloat(bendian);
+	void DisplayRadians (double radian) {
+		double bendian = radian /(2*Math.PI) * 6561d;
+		DisplayDouble(bendian);
 	}
 
-	void DisplayFloat (float num) {
-		while(num >= 6561f) num -= 6561f;
-		while(num < 0f) num += 6561f;
+	void DisplayDouble (double num) {
+		while(num >= 6561d) num -= 6561d;
+		while(num < 0d) num += 6561d;
 
 		string msg = DeafMath.ConvertToBase((int)Math.Floor(num * Math.Pow(3, 8)), 3);
 		msg = msg.PadLeft(16, '0');
+		DisplayTernary(msg);
+	}
 
+	void DisplayLargeInt (int num){
+		string msg = DeafMath.ConvertToBase(num, 3);
+		msg = msg.PadLeft(16, '0');
 		DisplayTernary(msg);
 	}
 
@@ -373,10 +377,11 @@ public class Eclipse : MonoBehaviour {
 	//===================Calc=========================//
 
 	void Recalc() {
-		if(Time < 0f) Time = 0f;
+		if(LargeTime < 0) LargeTime = 0;
+		double time = LargeTime / Math.Pow(3, 8);
 
-		Sun3dPos = (float)Math.Cos(Time*SunVeloFactor)*SunAxisA + (float)Math.Sin(Time*SunVeloFactor)*SunAxisB;
-		Moon3dPos = (float)Math.Cos(Time*MoonVeloFactor)*MoonAxisA + (float)Math.Sin(Time*MoonVeloFactor)*MoonAxisB;
+		Sun3dPos = (float)Math.Cos(time*SunVeloFactor)*SunAxisA + (float)Math.Sin(time*SunVeloFactor)*SunAxisB;
+		Moon3dPos = (float)Math.Cos(time*MoonVeloFactor)*MoonAxisA + (float)Math.Sin(time*MoonVeloFactor)*MoonAxisB;
 
 		SunDist = Magnitude(Sun3dPos);
 		MoonDist = Magnitude(Moon3dPos);
@@ -384,28 +389,26 @@ public class Eclipse : MonoBehaviour {
 		Vector3 unifySun = Vector3.Normalize(Sun3dPos);
 		Vector3 unifyMoon = Vector3.Normalize(Moon3dPos);
 
-		SunTheta = (float)Math.Asin(unifySun.z);
-		SunPhi = (float) Math.Atan2(unifySun.y, unifySun.x);
-		MoonTheta = (float)Math.Asin(unifyMoon.z);
-		MoonPhi = (float)Math.Atan2(unifyMoon.y, unifyMoon.x);
+		SunTheta = Math.Asin(unifySun.z);
+		SunPhi =  Math.Atan2(unifySun.y, unifySun.x);
+		MoonTheta = Math.Asin(unifyMoon.z);
+		MoonPhi = Math.Atan2(unifyMoon.y, unifyMoon.x);
 
-		if(SunTheta < 0f) SunTheta += 2*(float)Math.PI;
-		if(SunPhi < 0f) SunPhi += 2*(float)Math.PI;
-		if(MoonTheta < 0f) MoonTheta += 2*(float)Math.PI;
-		if(MoonPhi < 0f) MoonPhi += 2*(float)Math.PI;
-
-		if(Math.Abs(Time) < Math.Pow(3, -8)) Time = 0f;
+		if(SunTheta < 0f) SunTheta += 2*Math.PI;
+		if(SunPhi < 0f) SunPhi += 2*Math.PI;
+		if(MoonTheta < 0f) MoonTheta += 2*Math.PI;
+		if(MoonPhi < 0f) MoonPhi += 2*Math.PI;
 
 		if(CheckAns()) Solve();
 	}
 
-	float Magnitude(Vector3 n) {
-		return (float)Math.Pow(n.x*n.x + n.y*n.y + n.z*n.z, 0.5f);
+	double Magnitude(Vector3 n) {
+		return Math.Pow(n.x*n.x + n.y*n.y + n.z*n.z, 0.5f);
 	}
 
 	bool CheckAns() {
 
-		float[] checkList = new float[] {
+		double[] checkList = new double[] {
 			SunTheta - MoonTheta,
 			SunTheta - ViewTheta,
 			MoonTheta - ViewTheta,
@@ -414,14 +417,14 @@ public class Eclipse : MonoBehaviour {
 			MoonPhi - ViewPhi
 		};
 
-		foreach(float c in checkList){
-			float f = c;
+		foreach(double c in checkList){
+			double f = c;
 			f = Math.Abs(f);
 			
-			while(f < 0f) f += 2*(float)Math.PI;
-			while(f > 2*Math.PI) f -= 2*(float)Math.PI;
+			while(f < 0f) f += 2*Math.PI;
+			while(f > 2*Math.PI) f -= 2*Math.PI;
 
-			if(f > Math.PI) f = 2*(float)Math.PI - f;
+			if(f > Math.PI) f = 2*Math.PI - f;
 
 			if(f > 0.01f) return false;
 		}
