@@ -1,3 +1,5 @@
+//v1.4.0
+
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -30,15 +32,15 @@ public class Eclipse : MonoBehaviour {
 	private string[] MoonDingList = new string[] {"Ch", "C", "D", "D#", "F", "G", "G#", "A#"};
 	private bool isAni = false;
 
-	int Power = 0;
-	int LargeTime = 0; // seconds * 3^8
+	private int Power = 0;
+	private int LargeTime = 0; // seconds * 3^8
 
-	private Vector3 SunAxisA;
-	private Vector3 SunAxisB;
-	private Vector3 MoonAxisA;
-	private Vector3 MoonAxisB;
-	private Vector3 Sun3dPos;
-	private Vector3 Moon3dPos;
+	private Vector3Double SunAxisA;
+	private Vector3Double SunAxisB;
+	private Vector3Double MoonAxisA;
+	private Vector3Double MoonAxisB;
+	private Vector3Double Sun3dPos;
+	private Vector3Double Moon3dPos;
 
 	//radians
 	private double SunTheta;
@@ -52,6 +54,49 @@ public class Eclipse : MonoBehaviour {
 	private double MoonDist;
 	private double SunVeloFactor;
 	private double MoonVeloFactor;
+
+	//==========================================//
+
+	private class Vector3Double {
+		public double x;
+		public double y;
+		public double z;
+		public Vector3Double(double passx, double passy, double passz){
+			this.x = passx;
+			this.y = passy;
+			this.z = passz;
+		}
+		public Vector3Double(Vector3Double former){
+			this.x = former.x;
+			this.y = former.y;
+			this.z = former.z;
+		}
+		public double GetMagnitude() {
+			return Math.Pow(this.x*this.x + this.y*this.y + this.z*this.z, 0.5f);
+		}
+		public Vector3Double GetNormalized() {
+			double mg = this.GetMagnitude();
+			return new Vector3Double(this.x / mg,  this.y / mg, this.z / mg);
+		}
+
+		public static Vector3Double operator *(double scale, Vector3Double former){
+			return new Vector3Double(scale*former.x, scale*former.y, scale*former.z);
+		}
+		public static Vector3Double operator +(Vector3Double left, Vector3Double right){
+			return new Vector3Double(left.x + right.x, left.y + right.y, left.z + right.z);
+		}
+		public static double DotProduct(Vector3Double a, Vector3Double b){
+			return a.x*b.x + a.y*b.y + a.z*b.z;
+		}
+		public static double Angle(Vector3Double a, Vector3Double b){
+			return Math.Acos(Vector3Double.DotProduct(a, b) / a.GetMagnitude() / b.GetMagnitude());
+		}
+		public override string ToString() {
+			return "(" + this.x + ", " + this.y + ", " + this.z + ")";
+		}
+	}
+
+	//==========================================//
 
 	void Awake () {
 		ModuleId = ModuleIdCounter++;
@@ -186,10 +231,6 @@ public class Eclipse : MonoBehaviour {
 		DisplayTernary("0000000000000000");
 	}
 
-	void OnDestroy () {
-		
-	}
-
 	void Activate () { //Lightson
 		if(FirstActivation){
 			FirstActivation = false;
@@ -202,17 +243,17 @@ public class Eclipse : MonoBehaviour {
 	}
 
 	void Start () { //Calc
-		List<Vector3> vects = new List<Vector3>();
+		List<Vector3Double> vects = new List<Vector3Double>();
 
 		while(true){
-			Vector3 contender = new Vector3(Rnd.Range(-9,10), Rnd.Range(-9,10), Rnd.Range(-9,10));
+			Vector3Double contender = new Vector3Double(Rnd.Range(-9,10), Rnd.Range(-9,10), Rnd.Range(-9,10));
 
 			//regen if vector too small
-			if(Magnitude(contender) < 2d) continue;
+			if(contender.GetMagnitude() < 2d) continue;
 			
 			//regen if too close to colinear with previous vects
 			for(int i = 0; i < vects.Count -1; i++){
-				if(Vector3.Angle(contender, vects[i]) < 5f || Vector3.Angle(contender, vects[i]) > 175f) continue;
+				if(Vector3Double.Angle(contender, vects[i]) < 0.2d || Vector3Double.Angle(contender, vects[i]) > 6.1d) continue;
 			}
 
 			vects.Add(contender);
@@ -224,8 +265,7 @@ public class Eclipse : MonoBehaviour {
 		MoonAxisA = vects[2];
 		MoonAxisB = vects[3];
 		
-		int moonvelosqr = Rnd.Range(15,99);
-
+		int moonvelosqr = Rnd.Range(4,9);
 		while(DeafMath.IsSquare(moonvelosqr)) moonvelosqr++;
 		MoonVeloFactor = Math.Pow(moonvelosqr, 0.5f);
 		SunVeloFactor = Rnd.Range(6,15)/8.0d;
@@ -238,10 +278,6 @@ public class Eclipse : MonoBehaviour {
 		Debug.LogFormat("<The Eclipse #{0}> Body B velocity factor: {1}", ModuleId, MoonVeloFactor);
 		
 		Recalc();
-	}
-
-	void Update () {
-
 	}
 
 	void Solve () {
@@ -274,6 +310,7 @@ public class Eclipse : MonoBehaviour {
 	void DisplayLargeInt (int num){
 		string msg = DeafMath.ConvertToBase(num, 3);
 		msg = msg.PadLeft(16, '0');
+		msg = msg.Substring(msg.Length - 16);
 		DisplayTernary(msg);
 	}
 
@@ -296,8 +333,8 @@ public class Eclipse : MonoBehaviour {
 		yield return new WaitForSeconds(0.1f);
 		const float beatTime = 0.78947f;
 		for(int i = 0; i < 16; i++){
-			if(i < 8) StartCoroutine(FadeButton(SunButtons[i], Rnd.Range(0,3)));
-			else StartCoroutine(FadeButton(MoonButtons[i-8], Rnd.Range(0,3)));
+			if(i < 8) StartCoroutine(FadeButton(SunButtons[i], 2 - (i%2) ));
+			else StartCoroutine(FadeButton(MoonButtons[i-8], 1 - (i%2) ));
 			yield return new WaitForSeconds(beatTime);
 		}
 		isAni = false;
@@ -380,19 +417,25 @@ public class Eclipse : MonoBehaviour {
 		if(LargeTime < 0) LargeTime = 0;
 		double time = LargeTime / Math.Pow(3, 8);
 
-		Sun3dPos = (float)Math.Cos(time*SunVeloFactor)*SunAxisA + (float)Math.Sin(time*SunVeloFactor)*SunAxisB;
-		Moon3dPos = (float)Math.Cos(time*MoonVeloFactor)*MoonAxisA + (float)Math.Sin(time*MoonVeloFactor)*MoonAxisB;
+		double sunApparentTime = time;
+		double moonApparentTime = time;
 
-		SunDist = Magnitude(Sun3dPos);
-		MoonDist = Magnitude(Moon3dPos);
+		while(sunApparentTime >= 2*Math.PI/SunVeloFactor) sunApparentTime -= (2*Math.PI/SunVeloFactor);
+		while(moonApparentTime >= 2*Math.PI/MoonVeloFactor) moonApparentTime -= (2*Math.PI/MoonVeloFactor);
 
-		Vector3 unifySun = Vector3.Normalize(Sun3dPos);
-		Vector3 unifyMoon = Vector3.Normalize(Moon3dPos);
+		Sun3dPos  = Math.Cos(time*SunVeloFactor )*SunAxisA  + Math.Sin(time*SunVeloFactor )*SunAxisB;
+		Moon3dPos = Math.Cos(time*MoonVeloFactor)*MoonAxisA + Math.Sin(time*MoonVeloFactor)*MoonAxisB;
 
-		SunTheta = Math.Asin(unifySun.z);
-		SunPhi =  Math.Atan2(unifySun.y, unifySun.x);
+		SunDist  = Sun3dPos.GetMagnitude();
+		MoonDist = Moon3dPos.GetMagnitude();
+
+		Vector3Double unifySun  = Sun3dPos.GetNormalized();
+		Vector3Double unifyMoon = Moon3dPos.GetNormalized();
+
+		SunTheta  = Math.Asin(unifySun.z);
+		SunPhi    = Math.Atan2(unifySun.y, unifySun.x);
 		MoonTheta = Math.Asin(unifyMoon.z);
-		MoonPhi = Math.Atan2(unifyMoon.y, unifyMoon.x);
+		MoonPhi   = Math.Atan2(unifyMoon.y, unifyMoon.x);
 
 		if(SunTheta < 0f) SunTheta += 2*Math.PI;
 		if(SunPhi < 0f) SunPhi += 2*Math.PI;
@@ -402,12 +445,7 @@ public class Eclipse : MonoBehaviour {
 		if(CheckAns()) Solve();
 	}
 
-	double Magnitude(Vector3 n) {
-		return Math.Pow(n.x*n.x + n.y*n.y + n.z*n.z, 0.5f);
-	}
-
 	bool CheckAns() {
-
 		double[] checkList = new double[] {
 			SunTheta - MoonTheta,
 			SunTheta - ViewTheta,
@@ -426,7 +464,7 @@ public class Eclipse : MonoBehaviour {
 
 			if(f > Math.PI) f = 2*Math.PI - f;
 
-			if(f > 0.01f) return false;
+			if(f > 0.05d) return false;
 		}
 		return true;
 	}
