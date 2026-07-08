@@ -55,6 +55,10 @@ public class Eclipse : MonoBehaviour {
 	private double SunVeloFactor;
 	private double MoonVeloFactor;
 
+	private double SolutionTime;
+	private double SolutionTheta;
+	private double SolutionPhi;
+
 	//==========================================//
 
 	private class Vector3Double {
@@ -88,11 +92,14 @@ public class Eclipse : MonoBehaviour {
 		public static double DotProduct(Vector3Double a, Vector3Double b){
 			return a.x*b.x + a.y*b.y + a.z*b.z;
 		}
+		public static Vector3Double CrossProduct(Vector3Double a, Vector3Double b){
+			return new Vector3Double(a.y*b.z - b.y*a.z, a.z*b.x - b.z*a.x, a.x*b.y - b.x*a.y);
+		}
 		public static double Angle(Vector3Double a, Vector3Double b){
 			return Math.Acos(Vector3Double.DotProduct(a, b) / a.GetMagnitude() / b.GetMagnitude());
 		}
 		public override string ToString() {
-			return "(" + this.x + ", " + this.y + ", " + this.z + ")";
+			return "[" + this.x + ", " + this.y + ", " + this.z + "]";
 		}
 	}
 
@@ -270,14 +277,24 @@ public class Eclipse : MonoBehaviour {
 		MoonVeloFactor = Math.Pow(moonvelosqr, 0.5f);
 		SunVeloFactor = Rnd.Range(6,15)/8.0d;
 
+		Recalc();
+
 		Debug.LogFormat("<The Eclipse #{0}> Body A axis C: {1}", ModuleId, SunAxisA);
 		Debug.LogFormat("<The Eclipse #{0}> Body A axis D: {1}", ModuleId, SunAxisB);
 		Debug.LogFormat("<The Eclipse #{0}> Body B axis C: {1}", ModuleId, MoonAxisA);
 		Debug.LogFormat("<The Eclipse #{0}> Body B axis D: {1}", ModuleId, MoonAxisB);
 		Debug.LogFormat("<The Eclipse #{0}> Body A velocity factor: {1}", ModuleId, SunVeloFactor);
 		Debug.LogFormat("<The Eclipse #{0}> Body B velocity factor: {1}", ModuleId, MoonVeloFactor);
-		
-		Recalc();
+
+		Debug.LogFormat("[The Eclipse #{0}] Body A's position can be mapped as the following:", ModuleId);
+		Debug.LogFormat("[The Eclipse #{0}] PositionA = {1}*cos(UA) + {2}*sin(UA)", ModuleId, SunAxisA, SunAxisB);
+		Debug.LogFormat("[The Eclipse #{0}] UA = T*{1}", ModuleId, SunVeloFactor);
+
+		Debug.LogFormat("[The Eclipse #{0}] Body B's position can be mapped as the following:", ModuleId);
+		Debug.LogFormat("[The Eclipse #{0}] PositionB = {1}*cos(UB) + {2}*sin(UB)", ModuleId, MoonAxisA, MoonAxisB);
+		Debug.LogFormat("[The Eclipse #{0}] UB = T*{1}", ModuleId, MoonVeloFactor);
+
+		CalculateAnswer();
 	}
 
 	void Solve () {
@@ -352,14 +369,23 @@ public class Eclipse : MonoBehaviour {
 			yield return new WaitForSeconds(beatTime);
 		}
 
-		for(int i = 0; i < 16; i++){
-			if(i < 8) StartCoroutine(FadeButton(SunButtons[i], 3));
-			else StartCoroutine(FadeButton(MoonButtons[i-8], 3));
-			yield return new WaitForSeconds(beatTime);
-		}
-
 		GetComponent<KMBombModule>().HandlePass();
 		Debug.LogFormat("[The Eclipse #{0}] Solved.", ModuleId);
+
+		for(int i = 0; i < 16; i++){
+			for(int j = 0; j < 16; j++){
+				if(j < 8) StartCoroutine(FadeButton( SunButtons[j], 2 - ((j+i)%2) ));
+				else StartCoroutine(FadeButton( MoonButtons[j-8], 1 - ((j+i)%2) ));
+			}
+			yield return new WaitForSeconds(beatTime*0.95f);
+		}
+
+		for(int i = 0; i < 8; i++){
+			StartCoroutine(FadeButton(SunButtons[i], 3));
+			StartCoroutine(FadeButton(MoonButtons[7-i], 3));
+			yield return new WaitForSeconds(beatTime*0.95f);
+		}
+
 		isAni = false;
 	}
 
@@ -469,16 +495,160 @@ public class Eclipse : MonoBehaviour {
 		return true;
 	}
 
+	void CalculateAnswer(bool invert = false) {
+		Debug.LogFormat("<The Eclipse #{0}> Beginning calculation for possible answer.", ModuleId);
+		Debug.LogFormat("<The Eclipse #{0}> Juno was mad, he knew he'd been had, so he shot at the sun with a gun~", ModuleId);
+		
+		Vector3Double ansAxi = Vector3Double.CrossProduct(Vector3Double.CrossProduct(SunAxisA, SunAxisB), Vector3Double.CrossProduct(MoonAxisA, MoonAxisB));
+		ansAxi = (invert ? -1f : 1f) * ansAxi.GetNormalized();
+		Debug.LogFormat("<The Eclipse #{0}> Looking for answers that lie on {1}", ModuleId, ansAxi);
+		
+		Vector3Double sunTest;
+		Vector3Double moonTest;
+		double time = 0;
+		while(true){
+			sunTest = QuietGetSunPos(time);
+			if(Vector3Double.Angle(sunTest, ansAxi) < 0.05d || Vector3Double.Angle(sunTest, ansAxi) > 6.23d) break;
+			time += 0.01f;
+		}
+
+		Debug.LogFormat("<The Eclipse #{0}> Found sun alignment at {1}", ModuleId, time);
+		Debug.LogFormat("<The Eclipse #{0}> Trying moon alignment...", ModuleId);
+
+		while(true){
+			sunTest = QuietGetSunPos(time); //accuracy tbh
+			moonTest = QuietGetMoonPos(time);
+			if(Vector3Double.Angle(sunTest, moonTest) < 0.05d || Vector3Double.Angle(sunTest, moonTest) > 6.23d) break;
+			time += 2*Math.PI / SunVeloFactor;
+
+			if(time >= Math.Pow(3, 8)){
+				if(invert){
+					Debug.LogFormat("[The Eclipse #{0}] Critical error, could not solve eclipse within T < 3^8!", ModuleId);
+					Debug.LogFormat("[The Eclipse #{0}] Force-solving the module!", ModuleId);
+					Solve();
+					return;
+				} else {
+					Debug.LogFormat("<The Eclipse #{0}> Could not find a good answer, checking with the opposite direction...", ModuleId);
+					CalculateAnswer(true);
+					return;
+				}
+			}
+		}
+
+		SolutionTime = time;
+		SolutionTheta = Math.Asin(sunTest.z);
+		SolutionPhi = Math.Atan2(sunTest.y, sunTest.x);
+
+		if(SolutionTheta < 0f) SolutionTheta += 2*Math.PI;
+		if(SolutionPhi < 0f) SolutionPhi += 2*Math.PI;
+
+		Debug.LogFormat("[The Eclipse #{0}] Found eclipse at T={1}", ModuleId, SolutionTime);
+		Debug.LogFormat("[The Eclipse #{0}] Where θ={1}", ModuleId, SolutionTheta);
+		Debug.LogFormat("[The Eclipse #{0}] And φ={1}", ModuleId, SolutionPhi);
+	}
+
+	Vector3Double QuietGetSunPos(double time){
+		//get's sun's pos at time without actually modifying sun's position
+		double sunApparentTime = time;
+		while(sunApparentTime >= 2*Math.PI/SunVeloFactor) sunApparentTime -= (2*Math.PI/SunVeloFactor);
+		Vector3Double unifySun = (Math.Cos(time*SunVeloFactor )*SunAxisA  + Math.Sin(time*SunVeloFactor )*SunAxisB).GetNormalized();
+		return unifySun;
+	}
+
+	Vector3Double QuietGetMoonPos(double time){
+		double moonApparentTime = time;
+		while(moonApparentTime >= 2*Math.PI/MoonVeloFactor) moonApparentTime -= (2*Math.PI/MoonVeloFactor);
+		Vector3Double unifyMoon = (Math.Cos(time*MoonVeloFactor )*MoonAxisA  + Math.Sin(time*MoonVeloFactor )*MoonAxisB).GetNormalized();
+		return unifyMoon;
+	}
+
 #pragma warning disable 414
-	private readonly string TwitchHelpMessage = @"Use !{0} to do something.";
+	private readonly string TwitchHelpMessage = @"Use !{0} iN oNW iSE C to press inner north, outer north-west, inner south-east, center. Chain with spaces.";
 #pragma warning restore 414
 
 	IEnumerator ProcessTwitchCommand (string Command) {
+		Command = Command.Trim().ToUpper();
+		string[] cmds = Command.Split(' ');
+
 		yield return null;
-		Solve();
+		foreach(string c in cmds){
+			switch(c){
+				case "C": CenterPress(); break;
+				case "IN": MoonPress(MoonButtons[0]); break;
+				case "INE": MoonPress(MoonButtons[1]); break;
+				case "IE": MoonPress(MoonButtons[2]); break;
+				case "ISE": MoonPress(MoonButtons[3]); break;
+				case "IS": MoonPress(MoonButtons[4]); break;
+				case "ISW": MoonPress(MoonButtons[5]); break;
+				case "IW": MoonPress(MoonButtons[6]); break;
+				case "INW": MoonPress(MoonButtons[7]); break;
+				case "ON": SunPress(SunButtons[0]); break;
+				case "ONE": SunPress(SunButtons[1]); break;
+				case "OE": SunPress(SunButtons[2]); break;
+				case "OSE": SunPress(SunButtons[3]); break;
+				case "OS": SunPress(SunButtons[4]); break;
+				case "OSW": SunPress(SunButtons[5]); break;
+				case "OW": SunPress(SunButtons[6]); break;
+				case "ONW": SunPress(SunButtons[7]); break;
+				default:
+					yield return "sendtochaterror Invalid button: " + c;
+					yield break;
+					break;
+			}
+
+			yield return new WaitForSeconds(0.2f);
+		}
 	}
 
 	IEnumerator TwitchHandleForcedSolve () {
+		while(isAni) yield return null;
 		yield return null;
+
+		CenterPress();
+		yield return new WaitForSeconds(0.1f);
+
+		string ansTime = DeafMath.ConvertToBase((int)(SolutionTime * Math.Pow(3,8)), 3).PadLeft(16, '0');
+		string ansTheta = DeafMath.ConvertToBase((int)(SolutionTheta/(2*Math.PI) * 6561d * Math.Pow(3,8)), 3).PadLeft(16, '0');
+		string ansPhi = DeafMath.ConvertToBase((int)(SolutionPhi/(2*Math.PI) * 6561d * Math.Pow(3,8)), 3).PadLeft(16, '0');
+		for(int i = 0; i < 16; i++){
+			while(Power != 7-i){
+				if(ModuleSolved) break;
+				if(Power > 7-i) SunPress(SunButtons[3]);
+				if(Power < 7-i) SunPress(SunButtons[7]);
+				yield return new WaitForSeconds(0.1f);
+			}
+
+			//lazy? yes, care? no
+			if(ansTime[i] != '0') {
+				SunPress(SunButtons[1]);
+				yield return new WaitForSeconds(0.1f);
+			}
+			if(ansTime[i] == '2') {
+				SunPress(SunButtons[1]);
+				yield return new WaitForSeconds(0.1f);
+			}
+
+			if(ansTheta[i] != '0') {
+				SunPress(SunButtons[0]);
+				yield return new WaitForSeconds(0.1f);
+			}
+			if(ansTheta[i] == '2') {
+				SunPress(SunButtons[0]);
+				yield return new WaitForSeconds(0.1f);
+			}
+
+			if(ansPhi[i] != '0') {
+				SunPress(SunButtons[6]);
+				yield return new WaitForSeconds(0.1f);
+			}
+			if(ansPhi[i] == '2') {
+				SunPress(SunButtons[6]);
+				yield return new WaitForSeconds(0.1f);
+			}
+		}
+
+		if(!ModuleSolved) Solve();
+
+		yield break;
 	}
 }
