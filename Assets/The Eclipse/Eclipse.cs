@@ -524,8 +524,8 @@ public class Eclipse : MonoBehaviour {
 			if(time >= Math.Pow(3, 8)){
 				if(invert){
 					Debug.LogFormat("[The Eclipse #{0}] Critical error, could not solve eclipse within T < 3^8!", ModuleId);
-					Debug.LogFormat("[The Eclipse #{0}] Force-solving the module!", ModuleId);
-					Solve();
+					Debug.LogFormat("[The Eclipse #{0}] Regenerating the module!", ModuleId);
+					Start();
 					return;
 				} else {
 					Debug.LogFormat("<The Eclipse #{0}> Could not find a good answer, checking with the opposite direction...", ModuleId);
