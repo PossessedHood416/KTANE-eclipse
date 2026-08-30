@@ -31,6 +31,7 @@ public class Eclipse : MonoBehaviour {
 	private string[] SunDingList = new string[] {"Bh", "B", "C#", "D", "E", "F#", "G", "A"};
 	private string[] MoonDingList = new string[] {"Ch", "C", "D", "D#", "F", "G", "G#", "A#"};
 	private bool isAni = false;
+	private static float TPwait = 0.2f;
 
 	private int Power = 0;
 	private int LargeTime = 0; // seconds * 3^8
@@ -563,7 +564,7 @@ public class Eclipse : MonoBehaviour {
 	}
 
 #pragma warning disable 414
-	private readonly string TwitchHelpMessage = @"Use !{0} iN oNW iSE C to press inner north, outer north-west, inner south-east, center. Chain with spaces.";
+	private readonly string TwitchHelpMessage = @"Use !{0} iN oNW P iSE C to press inner north, outer north-west, pause for 3 seconds, inner south-east, center. Chain with spaces. !{0} setspeed 0.2 to set the time in between presses in seconds, 0.2s by default.";
 #pragma warning restore 414
 
 	IEnumerator ProcessTwitchCommand (string Command) {
@@ -571,6 +572,20 @@ public class Eclipse : MonoBehaviour {
 		string[] cmds = Command.Split(' ');
 
 		yield return null;
+		while(isAni) yield return null;
+		
+		if(cmds[0] == "SETDELAY" || cmds[0] == "SETSPEED"){
+			if(cmds.Length == 2 && Regex.IsMatch(cmds[1], @"^\d\.?\d*$")){
+				float parseage = float.Parse(cmds[1]);
+				if(parseage <= 3.0f){
+					TPwait = parseage;
+					yield break;
+				}
+			}
+			yield return "sendtochaterror Please specify only the delay in seconds. (ex: 0.2, max is 3.0)";
+			yield break;
+		}
+
 		foreach(string c in cmds){
 			switch(c){
 				case "C": CenterPress(); break;
@@ -590,13 +605,14 @@ public class Eclipse : MonoBehaviour {
 				case "OSW": SunPress(SunButtons[5]); break;
 				case "OW": SunPress(SunButtons[6]); break;
 				case "ONW": SunPress(SunButtons[7]); break;
+				case "P": yield return new WaitForSeconds(3f); break;
 				default:
 					yield return "sendtochaterror Invalid button: " + c;
 					yield break;
 					break;
 			}
 
-			yield return new WaitForSeconds(0.2f);
+			yield return new WaitForSeconds(TPwait);
 		}
 	}
 
@@ -647,7 +663,12 @@ public class Eclipse : MonoBehaviour {
 			}
 		}
 
-		if(!ModuleSolved) Solve();
+		if(!ModuleSolved){
+			Debug.LogFormat("[The Eclipse #{0}] Critical error, autosolver could not get to solution.", ModuleId);
+			Debug.LogFormat("[The Eclipse #{0}] T={1}, θ={2} φ={3}", ModuleId, LargeTime/Math.Pow(3,8), ViewTheta, ViewPhi);
+			yield return "sendtochaterror An error occured while autosolving, please ping Possessed with the log!";
+			Solve();
+		}
 
 		yield break;
 	}
